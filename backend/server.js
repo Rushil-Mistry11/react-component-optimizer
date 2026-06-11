@@ -38,10 +38,17 @@ function stripMarkdown(text) {
 app.post('/api/review', async (req, res) => {
     const { code, customRules } = req.body;
 
-    if (!code) {
-        return res.status(400).json({ error: 'Code is required' });
+    if (!code || code.trim().length < 10) {
+        return res.status(400).json({ error: 'Code snippet is way too short to evaluate.' });
     }
 
+    const looksLikeCode = /import|export|function|const|let|return|<[a-zA-Z]/i.test(code);
+    if (!looksLikeCode) {
+        return res.status(400).json({
+            error: 'Invalid Input: The text provided doesn\'t look like a React component code structure.'
+        });
+    }
+    
     let currentCode = '';
     let feedback = '';
     let iteration = 0;
