@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Sparkles, Code2, Loader2, Terminal, Settings2, Atom } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify'; 
+import 'react-toastify/dist/ReactToastify.css';      
 
 const API_URL = 'http://localhost:5000/api/review';
 
@@ -11,18 +13,51 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleOptimize = async () => {
-    if (!inputCode.trim()) return;
+    const trimmedCode = inputCode.trim();
+
+    // GUARD 1: Empty or too short check
+    if (!trimmedCode || trimmedCode.length < 10) {
+      toast.error('Code snippet is way too short to evaluate.');
+      return;
+    }
+
+    // GUARD 2: Structural React Validation Check
+    const looksLikeCode = /import|export|function|const|let|return|<[a-zA-Z]/i.test(trimmedCode);
+    if (!looksLikeCode) {
+      toast.error("Invalid Input: This doesn't look like a React component structure.");
+      return;
+    }
 
     setIsLoading(true);
+    const activeToastId = toast.loading('Agent loop executing...', { closeButton: false });
+
     try {
       const response = await axios.post(API_URL, {
-        code: inputCode,
+        code: trimmedCode,
         customRules: customRules,
       });
+      
       setOptimizedCode(response.data.optimizedCode);
+      
+      toast.update(activeToastId, {
+        render: `Optimized successfully in ${response.data.iterations} iterations!`,
+        type: 'success',
+        isLoading: false,
+        autoClose: 4000,
+        closeButton: true
+      });
+
     } catch (error) {
       console.error('Optimization error:', error);
-      alert('Failed to optimize component. Please check if backend is running.');
+      const backendError = error.response?.data?.error || 'Failed to optimize component.';
+      
+      toast.update(activeToastId, {
+        render: backendError,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true
+      });
     } finally {
       setIsLoading(false);
     }
@@ -30,6 +65,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+      <ToastContainer position="top-right" theme="dark" autoClose={4000} pauseOnHover />
+
       {/* Top Navigation */}
       <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
